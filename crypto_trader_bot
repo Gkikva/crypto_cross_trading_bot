@@ -1,0 +1,100 @@
+import requests
+
+
+
+class WhatYouHave:
+    def __init__(self, coin, budget):
+        self.coin = coin
+        self.budget = budget
+        self.fee = 0.0075
+        tickers = requests.get("https://api.bittrex.com/v3/markets/tickers")
+        self.js_tickers = tickers.json()
+        # how much crypto i have
+        self.how_much_i_have = ""
+
+        # collectiong data in dictionary ask/bid with name and after append in list
+        self.cryptoName_ask_bid = {}
+        self.collected_cryptoName_ask_bid = []
+
+        # my crypto budget traded in cross cryptos and appended in list
+        self.what_will_i_have_cross_trade = {}
+        self.collected_what_will_i_have_cross_trade = []
+
+        # final trade in dollar. what I will have and appended in list
+        self.final_trade_to_usd = {}
+        self.collected_final_trade_to_usd = []
+
+    def How_much_i_have(self):
+        for data in self.js_tickers:
+            symbol = data["symbol"].split("-")
+            if symbol[0] == self.coin.upper() and symbol[1] == "USD":
+                # ---- bellow is first trade formula, considering fee
+                lv1_budget = self.budget - (self.budget * self.fee)
+                lv1_budget_outOFfee = lv1_budget / float(data["askRate"])
+                self.how_much_i_have += str(lv1_budget_outOFfee)
+
+    # ----  search on site that crypto what you have. end append crypto's prices
+    def In_what_i_can_trade(self):
+        for data in self.js_tickers:
+            symbol = data["symbol"].split("-")
+            if symbol[0] == self.coin.upper():
+                self.cryptoName_ask_bid = {
+                                        "NAME": symbol[1],
+                                        "ASK": data["askRate"],
+                                        "BID": data["bidRate"]
+                                            }
+                self.collected_cryptoName_ask_bid.append(self.cryptoName_ask_bid)
+
+    # ---- searchs for those crypto in which you can trade (cross trade)
+    def What_will_i_have_cross_trade(self):
+        for data in self.collected_cryptoName_ask_bid:
+            ask = float(data["ASK"])
+            bid = float(data["BID"])
+            # ---- bellow is second trade formula, considering fee
+            lv2_budget = float(self.how_much_i_have) - (float(self.how_much_i_have) * self.fee)
+            askQuantity = lv2_budget * ask
+            bidQuantity = lv2_budget * bid
+            self.what_will_i_have_cross_trade = {
+                                                "nameQuantity" : data["NAME"],
+                                                "askQuantity": lv2_budget * ask,
+                                                "bidQuantity": lv2_budget * bid
+                                            }
+            self.collected_what_will_i_have_cross_trade.append(self.what_will_i_have_cross_trade)
+
+    # ---- if cross trade is valuable to trade with dollar
+    def Final_trade_to_usd(self):
+        for data_data in self.collected_what_will_i_have_cross_trade:
+            nameQuantity = data_data["nameQuantity"]
+            askQuantity = float(data_data["askQuantity"])
+            bidQuantity = float(data_data["bidQuantity"])
+            for data in self.js_tickers:
+                symbol = data['symbol'].split("-")
+                askRate = float(data["askRate"])
+                bidRate = float(data["bidRate"])
+                if symbol[0] == nameQuantity and symbol[1] == "USD":
+                    self.final_trade_to_usd = {
+                        "final_name" : nameQuantity,
+                        "final_ask_dollar" : askQuantity * askRate,
+                        "final_bid_dollar" : bidQuantity * bidRate
+                    }
+                    self.collected_final_trade_to_usd.append(self.final_trade_to_usd)
+    def checker(self):
+        for data in self.collected_final_trade_to_usd:
+            print(data)
+
+while True:
+    what_you_have = input("What coin you have?:   ")
+    how_much_you_spent = float(input("How much you spent?:  "))
+    crypto_info = WhatYouHave(what_you_have, how_much_you_spent)
+    crypto_info.In_what_i_can_trade() #this function you must call because there is list of cryptos which you can trade, so it is nessaccery to call
+    crypto_info.How_much_i_have()
+    crypto_info.What_will_i_have_cross_trade()
+    crypto_info.Final_trade_to_usd()
+    print("3) Did I will gain or loss money")
+    for data in crypto_info.collected_final_trade_to_usd:
+        print(data)
+    user = input("type exit to stop:  ")
+    if user.lower() == "exit":
+        break
+    else:
+        continue
